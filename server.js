@@ -2,11 +2,10 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-const FormData = require("form-data");
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: "10mb" })); // Tăng limit
+app.use(express.json({ limit: "10mb" }));
 
 const TOKEN = process.env.HARAVAN_TOKEN;
 const BLOG_ID = process.env.BLOG_ID;
@@ -18,35 +17,37 @@ app.get("/", (req, res) =>
   res.json({ status: "OK", message: "Haravan Proxy Running", blog_id: BLOG_ID })
 );
 
-// 🆕 ENDPOINT UPLOAD ẢNH
-app.post("/api/upload-image", async (req, res) => {
+// 🆕 UPLOAD NHIỀU ẢNH
+app.post("/api/upload-images", async (req, res) => {
   try {
-    const { base64, filename } = req.body;
-    if (!base64 || !filename) {
-      return res.status(400).json({ error: "Missing base64 or filename" });
+    const { images } = req.body;
+    if (!images || !Array.isArray(images)) {
+      return res.status(400).json({ error: "Missing images array" });
     }
 
-    // Upload lên Haravan Assets
-    const response = await axios.post(
-      ASSET_API,
-      {
-        asset: {
-          key: `assets/${filename}`,
-          attachment: base64,
+    const uploadPromises = images.map(async ({ base64, filename }) => {
+      const response = await axios.post(
+        ASSET_API,
+        {
+          asset: {
+            key: `assets/${filename}`,
+            attachment: base64,
+          },
         },
-      },
-      {
-        headers: {
-          Authorization: "Bearer " + TOKEN,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+        {
+          headers: {
+            Authorization: "Bearer " + TOKEN,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.data.asset.public_url;
+    });
 
-    const imageUrl = response.data.asset.public_url;
-    res.json({ success: true, url: imageUrl });
+    const urls = await Promise.all(uploadPromises);
+    res.json({ success: true, urls });
   } catch (err) {
-    console.error("Upload error:", err.response?.data);
+    console.error("Upload error:", err.response?.data || err.message);
     res.status(500).json({ error: err.response?.data || err.message });
   }
 });
@@ -68,6 +69,4 @@ app.post("/api/articles", async (req, res) => {
   }
 });
 
-app.listen(PORT, () =>
-  console.log(`✅ Server running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
