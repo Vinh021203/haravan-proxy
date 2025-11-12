@@ -20,33 +20,7 @@ const haravan = axios.create({
   timeout: 30000,
 });
 
-app.get("/", (req, res) => res.json({ status: "OK" }));
-
-// Upload nhiều ảnh
-app.post("/api/upload-images", async (req, res) => {
-  try {
-    const { images } = req.body;
-    if (!images?.length)
-      return res.status(400).json({ error: "Missing images" });
-
-    const urls = await Promise.all(
-      images.map(({ base64, filename }) =>
-        haravan
-          .post("/themes/assets.json", {
-            asset: {
-              key: `assets/${Date.now()}-${filename}`,
-              attachment: base64,
-            },
-          })
-          .then((r) => r.data.asset.public_url)
-      )
-    );
-
-    res.json({ success: true, urls });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+app.get("/", (req, res) => res.json({ status: "OK", blog_id: BLOG_ID }));
 
 // Post bài
 app.post("/api/articles", async (req, res) => {
@@ -57,10 +31,11 @@ app.post("/api/articles", async (req, res) => {
     );
     res.json(response.data);
   } catch (err) {
+    console.error("❌ Error:", err.response?.data || err.message);
     res
       .status(err.response?.status || 500)
       .json(err.response?.data || { error: err.message });
   }
 });
 
-app.listen(PORT, () => console.log(`✅ Server on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
