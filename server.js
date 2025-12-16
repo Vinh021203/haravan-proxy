@@ -38,4 +38,23 @@ app.post("/api/articles", async (req, res) => {
   }
 });
 
+// Update bài (body_html, title, tags...)
+app.put("/api/articles/:id", async (req, res) => {
+  try {
+    const articleId = req.params.id;
+
+    const response = await haravan.put(
+      `/blogs/${BLOG_ID}/articles/${articleId}.json`,
+      req.body // { article: { ... } }
+    );
+
+    res.json(response.data);
+  } catch (err) {
+    console.error("❌ Error update:", err.response?.data || err.message);
+    res
+      .status(err.response?.status || 500)
+      .json(err.response?.data || { error: err.message });
+  }
+});
+
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
